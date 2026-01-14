@@ -13,10 +13,11 @@ from .logging_io import EventLogger
 class ActionExtractorFilter(FrameProcessor):
     """Strips <...> directives from LLM text before TTS and logs them."""
 
-    def __init__(self, actions_path: Path, event_logger: Optional[EventLogger] = None, **kwargs):
+    def __init__(self, actions_path: Path, event_logger: Optional[EventLogger] = None, on_action: Optional[Callable[[str], None]] = None, **kwargs):
         super().__init__(enable_direct_mode=True, **kwargs)
         self._actions_path = actions_path
         self._event_logger = event_logger
+        self._on_action = on_action
         self._last_raw_text: str = ""
         self._current_action: Optional[List[str]] = None
 
@@ -29,6 +30,9 @@ class ActionExtractorFilter(FrameProcessor):
                 self._append_actions(actions)
                 if self._event_logger:
                     self._event_logger.emit("actions_extracted", {"actions": actions})
+                if self._on_action:
+                    for action in actions:
+                        self._on_action(action)
             frame.text = sanitized
             if getattr(frame, "is_final", False):
                 self._reset_stream_state()

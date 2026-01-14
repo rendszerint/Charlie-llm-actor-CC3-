@@ -10,11 +10,9 @@ venv/
 .env.local
 runtime/conversations/*
 runtime/*.log
-runtime/config.json
 .DS_Store
 .idea/
 .vscode/
 runtime/dialogue.txt
 runtime/config.json
 /src/llm_actor.egg-info
-assets/*

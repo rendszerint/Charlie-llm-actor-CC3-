@@ -112,7 +112,7 @@ class AudioConfig:
 
 @dataclass
 class STTConfig:
-    model: str = field(default_factory=lambda: _env("PIPECAT_DEFAULT_STT_MODEL", "moonshine"))
+    model: str = field(default_factory=lambda: _env("PIPECAT_DEFAULT_STT_MODEL", "flux-general-en"))
     language: str = "en-US"
     eager_eot_threshold: float = 0.5
     eot_threshold: float = 0.85
@@ -144,8 +144,7 @@ class LLMConfig:
 
 @dataclass
 class TTSConfig:
-    model: str = field(default_factory=lambda: _env("PIPECAT_DEFAULT_TTS_MODEL", "kokoro"))
-    voice: str = field(default_factory=lambda: _env("PIPECAT_DEFAULT_VOICE", "af_sarah"))
+    voice: str = field(default_factory=lambda: _env("PIPECAT_DEFAULT_VOICE", "aura-2-thalia-en"))
     encoding: str = "linear16"
     sample_rate: int = 24000
 

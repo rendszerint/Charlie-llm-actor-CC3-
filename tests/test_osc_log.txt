@@ -1,0 +1,4 @@
+[OSC STATUS]
+Counter      : 12.2
+Last Text    : Hello world
+Last Actions : Hello, world

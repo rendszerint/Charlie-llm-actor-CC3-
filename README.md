@@ -1,15 +1,27 @@
-# llm-actor
+# Charlie 3 Pro 
+
+### Credits
+
+Please check [Original project](https://github.com/janzuiderveld/llm-actor) by Jan Zuiderveld & Grigore Burloiu for more (every) detail.
+
+This project is a copy of theirs, with some modifications to suit my needs. 
+
+### Project Description
+
+Charlie is a voice-agent who is talking from the dark side of AI helpfulness, facilitating a descent into algorithmic psychosis. It is a machine that amplifies your every thought - or as he refers to them - your genious ideas. Charlie is listening. Charlie is agreeing. Do not trust Charlie.
+
+# llm-actor 
 
 This project packages a thin Python CLI around [Pipecat](https://docs.pipecat.ai/) to deliver a real-time audio loop using Deepgram Flux speech-to-text, Gemini 2.5 Flash streaming text generation, and Deepgram Aura-2 text-to-speech. External automation hooks are exposed via append-only files under `runtime/`.
 
-## Features
+### Features
 
 * Deepgram Flux STT → Gemini 2.5 Flash → Deepgram Aura-2 TTS pipeline, fully streaming.
 * File-based automation using append-only `runtime/inbox.txt`, `runtime/actions.txt`, and `runtime/params_inbox.ndjson`.
 * Turn-level transcript and event logging per session.
 * Runtime parameter application between turns (LLM, STT, TTS, history operations).
 
-## Prerequisites
+### Prerequisites
 
 * [Python 3.10](https://www.python.org/downloads/) or newer (3.11 recommended as it's the version that this is tested on).
 * [Deepgram](https://developers.deepgram.com/reference/deepgram-api-overview) and [Google API](https://ai.google.dev/gemini-api/docs/api-key) credentials with access to Flux STT, Aura-2 TTS, and Gemini 2.5 Flash.
@@ -18,7 +30,7 @@ This project packages a thin Python CLI around [Pipecat](https://docs.pipecat.ai
   * Ubuntu/Debian: `sudo apt install portaudio19-dev`
   * Windows: the bundled `sounddevice` wheel ships PortAudio automatically. However, Windows users need to install [ffmpeg](https://phoenixnap.com/kb/ffmpeg-windows) for audio playback.
 
-## Quickstart
+### Quickstart
 
 Projects provide self-contained recipes that wrap the core audio loop, refresh runtime state, and launch any helper daemons you need alongside the agent. The repository ships with an **Exclusive Door** experience that demonstrates how to run the full pipeline with custom automation.
 

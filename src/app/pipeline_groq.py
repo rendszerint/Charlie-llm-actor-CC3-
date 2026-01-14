@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import os
 import threading
 import time
 from dataclasses import dataclass
@@ -56,8 +57,7 @@ from app.session import SessionPaths, new_session
 from services.llm import build_groq_llm
 from services.stt import build_deepgram_flux_stt
 from services.tts import build_deepgram_tts
-from services.tts_kokoro import KokoroTTSService
-from services.stt_moonshine import MoonshineSTTService
+from services.osc import OscService
 
 import keyboard
 
@@ -267,7 +267,10 @@ class VoicePipelineController:
         self._voice_switcher: Optional[VoiceSwitcher] = None
         self._context_aggregator: Optional[OpenAIContextAggregatorPair] = None
         self._assistant_aggregator: Optional[AssistantAggregator] = None
-
+        self._osc_service = OscService(log_file=self._actions_path)
+        # Fix: internal speaker ID is 'persona2', so default match should be 'persona2'
+        self._osc_target_persona = os.getenv("OSC_TARGET_PERSONA", "persona2").lower()
+    
         self._previous_speaker = "persona2"
         self._current_speaker = "persona1"
         self._dialogue_file = Path("runtime/dialogue.txt")
@@ -281,15 +284,31 @@ class VoicePipelineController:
         if self._components:
             self._components.params_watcher.drain_pending()
         self._history.add("user", text)
+        # OSC Activity report
+        self._osc_service.report_activity()
+        
+        # Check if the user is asking to switch to narrate mode
+        if "narrate" in text.lower() or "narrator" in text.lower():
+             print(f"User requested narrator mode: {text}")
+             await self._voice_switcher.switch_mode("narrator")
+             return
         if "turn_start" not in self._metrics.marks:
             self._metrics.mark("turn_start")
 
     async def _on_assistant_message(self, text: str) -> None:
         self._history.add("assistant", text, replace_last=True)
         config = self._config_manager.config
+        
+        # OSC Activity report
+        self._osc_service.report_activity()
 
         if self._current_speaker == "narrator":
             self._plot_twist = text
+
+        # OSC Integration
+        # Always trigger in 1to1 mode, otherwise check target persona
+        if config.llm.mode == "1to1" or self._current_speaker.lower() == self._osc_target_persona:
+            self._osc_service.process_turn(text)
 
         if config.llm.mode == "2personas" or config.llm.mode == "narrator":
             
@@ -317,19 +336,9 @@ class VoicePipelineController:
         )
         self._transport = LocalAudioTransport(transport_params)
         
-        self._stt_service = build_deepgram_flux_stt(config, keys["deepgram"]) if config.stt.model == "deepgram-flux" else MoonshineSTTService(
-            model_name="moonshine/tiny",
-            language="en",
-            vad_enabled=True,
-            vad_analyzer=SileroVADAnalyzer(),
-        )
+        self._stt_service = build_deepgram_flux_stt(config, keys["deepgram"])
         self._llm_service = build_groq_llm(config, keys["groq"])
-        self._tts_service = build_deepgram_tts(config, keys["deepgram"]) if config.tts.model == "deepgram" else KokoroTTSService(
-            model_path="assets/kokoro-v1.0.onnx",
-            voices_path="assets/voices-v1.0.bin",
-            voice_id=config.tts.voice,
-            sample_rate=config.tts.sample_rate,
-        )
+        self._tts_service = build_deepgram_tts(config, keys["deepgram"])
         self._aec_proc = PyAECProcessor(mute_while_tts=(config.audio.aec == "mute_while_tts"))
         self._push_up_tts_proc = PushUpTTSFrameProcessor()
         self._voice_switcher = VoiceSwitcher(
@@ -381,7 +390,11 @@ class VoicePipelineController:
             STTStandaloneIFilter(event_logger=self._event_logger),
             self._context_aggregator.user(),
             self._llm_service,
-            ActionExtractorFilter(self._actions_path, self._event_logger),
+            ActionExtractorFilter(
+                self._actions_path, 
+                self._event_logger,
+                on_action=lambda action: self._osc_service.send_action(action)
+            ),
             self._tts_service,
             self._transport.output(),
             self._push_up_tts_proc,
@@ -576,6 +589,13 @@ class VoicePipelineController:
             with self._dialogue_file.open("a", encoding="utf8") as f:
                 f.write(f"{self._current_speaker.upper()}: {config.llm.persona1['opening']}\n")
 
+            # persona_voice = config.llm.persona2["voice"]
+            # self._tts_service.set_voice(persona_voice)
+
+            # Switch speakers
+            # self._current_speaker = "persona2"
+            # self._previous_speaker = "persona1"
+
         await runner.run(task)
 
     async def stop(self) -> None:
@@ -627,13 +647,10 @@ class VoicePipelineController:
 
         # Construct persona-specific input
         persona_input = ""
-        if config.llm.mode == "narrator":
-            if self._current_speaker == "narrator":
-                persona_input = f"System:\n{system_prompt}\n\n.This is the history of the conversation, take account of it when formulating the plot twist:\n{self._full_memory}\n\n. Your turn:"
-            else:
-                persona_input = f"System:\n{system_prompt} Plot twist: {self._plot_twist}\n\nThis is the history of the conversation, take account of it when formulating your answer:\n{self._full_memory}\n\nReply only to the last line of the other persona. Take into account the context changes added by the NARRATOR. Stay in character! Your turn:"
+        if(self._current_speaker == "narrator"):
+            persona_input = f"System:\n{system_prompt}\n\n.This is the history of the conversation, take account of it when formulating the plot twist:\n{self._full_memory}\n\n. Your turn:"
         else:
-                persona_input = f"System:\n{system_prompt}\n\nThis is the history of the conversation, take account of it when formulating your answer:\n{self._full_memory}\n\nReply only to the last line of your conversation partner. Stay in character! Your turn:"
+            persona_input = f"System:\n{system_prompt} Plot twist: {self._plot_twist}\n\nThis is the history of the conversation, take account of it when formulating your answer:\n{self._full_memory}\n\nTake into account the context changes added by the NARRATOR. Stay in character! Your turn:"
 
         # Inject the next speaking turn
         await self._inject_user_turn(persona_input)

@@ -11,8 +11,11 @@ src/app/inbox_watch.py
 src/app/logging_io.py
 src/app/metrics.py
 src/app/params_apply.py
-src/app/pipeline.py
+src/app/pipeline_google.py
+src/app/pipeline_groq.py
+src/app/pipeline_ollama.py
 src/app/prompts.py
+src/app/resampler_patch.py
 src/app/session.py
 src/examples/inject_from_inbox.py
 src/examples/minimal_run.py
@@ -25,6 +28,7 @@ src/projects/__init__.py
 src/projects/utils.py
 src/services/__init__.py
 src/services/llm.py
+src/services/osc.py
 src/services/stt.py
 src/services/tts.py
 src/tests/test_api_readiness.py

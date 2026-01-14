@@ -1,9 +1,15 @@
-pipecat-ai[deepgram,google,local]
+pipecat-ai[deepgram,google,groq,local,local-smart-turn-v3,silero]
+pyaec
 python-dotenv
 pydantic
 sounddevice>=0.4
 typer>=0.9
 watchfiles
+transformers[torch]==4.48.2
+onnx
+onnxruntime
+keyboard
+python-osc
 
 [test]
 pytest
